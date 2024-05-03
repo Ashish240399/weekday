@@ -1,18 +1,19 @@
 import React from "react";
 import EasyApplyButton from "./EasyApplyButton";
+import ReferralButton from "./ReferralButton";
 
 const JobPostCard = ({ jobDetails }) => {
   return (
     <div className="w-full bg-white text-black shadow-[0_1px_3px_1px_rgba(0,0,0,0.2)] rounded-[25px] p-5 max-h-[550px] overflow-hidden relative">
       <div className="flex gap-3">
-        <div className="bg-[#222020] text-white h-[50px] w-[50px] flex items-center justify-center">
-          W
+        <div className="h-[50px] w-[50px] flex items-center justify-center">
+          <img src={jobDetails.logoUrl} alt="" />
         </div>
         <div>
           <p className="text-gray-500 font-semibold tracking-[1.4px] text-[14px]">
             {
-              jobDetails.jdUid.split("-")[
-                jobDetails.jdUid.split("-").length - 1
+              jobDetails.companyName.split("-")[
+                jobDetails.companyName.split("-").length - 1
               ]
             }
           </p>
@@ -57,9 +58,12 @@ const JobPostCard = ({ jobDetails }) => {
           <p className="text-gray-400 font-[600] tracking-[1px] text-[13px]">
             Minimum Experience
           </p>
-          <div className="text-[14px]">2 Years</div>
+          <div className="text-[14px]">{jobDetails.minExp} Years</div>
         </div>
         <EasyApplyButton />
+        <div className="mt-4">
+          <ReferralButton />
+        </div>
       </div>
     </div>
   );
