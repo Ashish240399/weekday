@@ -40,6 +40,9 @@ function reducer(state, action) {
 export default function Home() {
   // Filter required ==>  Min experience(Derived), Company name(Search), Location(Search), Remote/on-site(Fixed), Tech stack(Not included), Role(Derived), Min base pay(derived)
 
+  const [dataLoading, setDataLoading] = useState(false);
+  const [totalJob, setTotalJobs] = useState(0);
+  const lastJobPostCardRef = useRef();
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [offset, setOffset] = useState(0);
@@ -68,19 +71,26 @@ export default function Home() {
             setOffset((prevOffset) => prevOffset + 10);
           }
         },
-        { rootMargin: "100px" }
+        { rootMargin: "500px" }
       );
       if (node) observer.current.observe(node);
     },
     [hasMoreData]
   );
 
+  // Fetch data from server
   async function fetchData() {
+    setDataLoading(true);
     const response = await getJobLists(offset, 10);
+
+    // setOffset((prev) => prev + 10);
+    setTotalJobs(response.totalCount);
     const jdArr = response.jdList;
     let minSalary = filters.minBasePay;
     let minExp = filters.minExperience;
     let role = [...filters.jobRole];
+
+    // Make array to pass to the options of the React Select
     for (let i = 0; i < jdArr.length; i++) {
       if (jdArr[i].maxJdSalary && jdArr[i].maxJdSalary > minSalary) {
         const lessFromNextVal = jdArr[i].maxJdSalary % 10;
@@ -111,10 +121,22 @@ export default function Home() {
       setHasMoreData(false);
     }
 
+    setDataLoading(false);
     setData((prevData) => [...prevData, ...jdArr]);
   }
+
+  // Whenever all filter closed then make the data list empty
   useEffect(() => {
-    setData([]);
+    if (
+      selectedFilters.location == "" &&
+      selectedFilters.company == "" &&
+      selectedFilters.minExp == 0 &&
+      selectedFilters.minSalary == 0 &&
+      selectedFilters.jobType.length == 0 &&
+      selectedFilters.role.length == 0
+    ) {
+      setData([]);
+    }
     fetchData();
   }, [selectedFilters]);
 
@@ -124,6 +146,7 @@ export default function Home() {
     }
   }, [offset, hasMore, selectedFilters, hasMoreData]);
 
+  // Filter the data which are in view
   useEffect(() => {
     const allJdArr = [...data];
     const filterdJdArr = allJdArr.filter((job) => {
@@ -135,7 +158,7 @@ export default function Home() {
           .toLowerCase()
           .includes(selectedFilters.company.toLowerCase()) &&
         selectedFilters.minExp <= job.minExp &&
-        selectedFilters.minSalary <= job.minJdSalary &&
+        selectedFilters.minSalary <= job.maxJdSalary &&
         (selectedFilters.jobType.length === 0 ||
           selectedFilters.jobType.some(
             (type) =>
@@ -150,12 +173,33 @@ export default function Home() {
         return job;
       }
     });
+    if (filteredData.length == 0) {
+      if (offset < totalJob) {
+        // setOffset((prev) => prev + 1);
+      } else {
+        setHasMore(false);
+      }
+    }
     setFilteredData(filterdJdArr);
   }, [data, selectedFilters]);
-  console.log(hasMore, hasMoreData);
+
+  // Check for the data present at last and call the fetch data
+  useEffect(() => {
+    if (lastJobPostCardRef.current) {
+      const rect = lastJobPostCardRef.current.getBoundingClientRect();
+      const distanceFromViewportBottom = window.innerHeight - rect.bottom;
+      if (
+        distanceFromViewportBottom < 100 &&
+        rect.top > 10 &&
+        rect.top <= window.innerHeight
+      ) {
+        fetchData();
+      }
+    }
+  }, [filteredData, data]);
   return (
-    <div className="h-[100vh] w-[100vw] px-[10%] overflow-auto relative">
-      <div className="z-[200] relative flex flex-wrap items-center gap-3 text-[12px]">
+    <div className="h-[100vh] w-[100vw] md:px-[10%] px-[2.5%] overflow-auto relative py-4">
+      <div className="z-[200] relative md:flex md:flex-wrap md:items-center md:gap-3 grid grid-cols-2 gap-3 text-[12px]">
         <MultiSelection
           name={"Role"}
           label="role"
@@ -194,20 +238,31 @@ export default function Home() {
         />
       </div>
       <div></div>
-      <div className="grid grid-cols-3 gap-x-[70px] gap-y-[40px] bg-white py-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-[70px] gap-y-[40px] bg-white py-4">
         {filteredData.map((item, index) => (
-          <div key={index}>
+          <div
+            key={index}
+            ref={index === filteredData.length - 1 ? lastJobPostCardRef : null}
+          >
             <JobPostCard jobDetails={item} />
           </div>
         ))}
       </div>
-      {hasMoreData && (
-        <div
-          className="text-center text-[14px] text-gray-500 py-[3vh]"
-          ref={lastElementRef}
-        >
+      {filteredData.length == 0 && hasMore == false && (
+        <div className="text-center text-[14px] text-gray-500 py-[3vh]">
+          Data Not Found
+        </div>
+      )}
+      {dataLoading && (
+        <div className="text-center text-[14px] text-gray-500 py-[3vh]">
           Loading...
         </div>
+      )}
+      {hasMoreData && (
+        <div
+          className="text-center text-[14px] text-gray-500"
+          ref={lastElementRef}
+        ></div>
       )}
     </div>
   );
